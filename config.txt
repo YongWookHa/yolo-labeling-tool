@@ -1,0 +1,10 @@
+max_height : 900
+key_1 (label_0) : human
+key_2 (label_1) : dog
+key_3 (label_2) : cat
+key_4 (label_3) : car
+key_5 (label_4) : bicycle
+key_6 (label_5) : 
+key_7 (label_6) : 
+key_8 (label_7) : 
+key_9 (label_8) : 

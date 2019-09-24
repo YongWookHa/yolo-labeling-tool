@@ -1,0 +1,5 @@
+certifi==2019.9.11
+Pillow==6.1.0
+PyQt5==5.13.1
+PyQt5-sip==4.19.19
+wincertstore==0.2
