@@ -1,47 +1,65 @@
 # yolo-labeling-tool
 
-## Overview
+## 1. Overview
 
-Python based GUI for marking bounded boxes of objects in images for training Yolo v3 and v2 [https://github.com/AlexeyAB/darknet](https://github.com/AlexeyAB/darknet). You can generate the **YOLO format** custom data with this program.
+Python based GUI for marking bounded boxes of objects in images for training Yolo v3 and v2 [https://github.com/AlexeyAB/darknet](https://github.com/AlexeyAB/darknet). You can generate your own **YOLO format** custom data with `yolo-labeling-tool`.
 
 You should put the files listed below together. 
 
-#### main.py
-
+> #### -main.py
+>
 > `main.py` contains all the codes.
-
-#### config.txt
-
-> ```
+>
+> #### -config.txt
+>
+> ```bash
 > max_height : int
 > key_1 : label_name_1 
-> key_2 : label_name_2
+>  key_2 : label_name_2
 > ...
 > key_9 : label_name_9
 > ```
 > The class number(label number) which would be stored in the result file started from 0.
->
+> 
 > These configs must follow the original format.
-
-#### images
+> 
+> #### -images
 > * start.png : show when the job started
 > * end.png : show when the job finished
->
->Of course, you can use your own images.
-
-## Usage
+> 
+> Of course, you can use your own images.
+ 
+## 2. Get Ready
 
 First of all, install the dependecies.
 ```bash
 pip install -r requirements.txt
 ```
+Before start the program, edit `config.txt` file as your needs. If your image's height is bigger then `max_height`, it will be scaled with keeping the h*w ratio.
 
-Then, you can simply execute the code with python.
+**_Backup your image before run the program since it will resize your original image._**
+
+Now, you can run the program by simply executing the code with python.
+
 ```bash
 python main.py
 ```
 
-**_Backup your image before run the program since it will resize your original image._**
+## 3. Usage
+
+You need to 
+
+Now, you are ready to start generating you own train data.
+
+![](https://user-images.githubusercontent.com/12293076/65559832-3d0ee780-df77-11e9-9f08-8312f9b570c3.PNG)
+
+You will see the window above. Then, press `Path` button and select a directory where your images are. Then the resizing procedure will be started. Then, you can press `Next` button to start the main process.
+
+You can draw bounding boxes by draging on the image. After drawing a box, you can should tag the box by pressing <kbd>1-9</kbd>. The `num:label name` setting should be specified in `config.txt` in advance. You can change the last box's tag by pressing tagging button again. If you found mistake of something before the last box, then remove the mistaken box by clicking it with <kbd>Right</kbd> mouse button.
+
+Each time you click `Next` button or press <kbd>space</kbd>, your work will be saved image by image in a txt file which has same filename of the image.
+
+For now, if you want to edit boxes of previous image, you need to delete the txt file of that image.
 
 #### Mouse control
 
@@ -54,21 +72,21 @@ Button | Description |
 
 Shortcut | Description | 
 --- | --- |
-<kbd>0-9</kbd> | Object id |
-<kbd>ESC</kbd> | Cancel the last box |
-<kbd>space</kbd> | Next image |
+<kbd>1-9</kbd> | Tag the last box |
+<kbd>ESC</kbd> | Cancel button |
+<kbd>space</kbd> | Next button |
 
 
-
-## ETC
+## 4. ETC
 
 If you want to build `exe` file, use [pyinstaller](https://github.com/pyinstaller/pyinstaller).
 ```bash
 pip install pyinstaller
 pyinstaller --onefile --noconsole main.py
 ```
+_In this case, You still need to carry `config.txt`, `start.png`, `end.png` with your `exe`._
 
-## author
+## 5. author
 | | |
 | --- | --- |
 | github | [https://github.com/YongWookHa/](https://github.com/YongWookHa/) |
