@@ -6,11 +6,11 @@ Python based GUI for marking bounded boxes of objects in images for training Yol
 
 You should put the files listed below together. 
 
-> #### -main.py
+> #### - main.py
 >
 > `main.py` contains all the codes.
 >
-> #### -config.txt
+> #### - config.txt
 >
 > ```bash
 > max_height : int
@@ -23,7 +23,7 @@ You should put the files listed below together.
 > 
 > These configs must follow the original format.
 > 
-> #### -images
+> #### - images
 > * start.png : show when the job started
 > * end.png : show when the job finished
 > 
@@ -51,11 +51,11 @@ You need to
 
 Now, you are ready to start generating you own train data.
 
-![](https://user-images.githubusercontent.com/12293076/65559832-3d0ee780-df77-11e9-9f08-8312f9b570c3.PNG)
+![capture](https://user-images.githubusercontent.com/12293076/65667149-108fc400-e07a-11e9-8fa2-52363f08c87c.PNG)
 
 You will see the window above. Then, press `Path` button and select a directory where your images are. Then the resizing procedure will be started. Then, you can press `Next` button to start the main process.
 
-You can draw bounding boxes by draging on the image. After drawing a box, you can should tag the box by pressing <kbd>1-9</kbd>. The `num:label name` setting should be specified in `config.txt` in advance. You can change the last box's tag by pressing tagging button again. If you found mistake of something before the last box, then remove the mistaken box by clicking it with <kbd>Right</kbd> mouse button.
+You can draw bounding boxes by draging on the image. After drawing a box, you should tag the box by pressing <kbd>1-9</kbd>. The `num:label name` setting should be specified in `config.txt` in advance. You can change the last box's tag by pressing tagging button again. If you found earlier mistakes, then remove the mistaken box by clicking it with <kbd>Right</kbd> mouse button.
 
 Each time you click `Next` button or press <kbd>space</kbd>, your work will be saved image by image in a txt file which has same filename of the image.
 
@@ -84,7 +84,7 @@ If you want to build `exe` file, use [pyinstaller](https://github.com/pyinstalle
 pip install pyinstaller
 pyinstaller --onefile --noconsole main.py
 ```
-_In this case, You still need to carry `config.txt`, `start.png`, `end.png` with your `exe`._
+_You need to carry `config.txt`, `start.png`, `end.png` with your `exe` as well._
 
 ## 5. author
 | | |
