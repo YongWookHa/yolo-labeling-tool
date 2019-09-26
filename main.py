@@ -3,7 +3,7 @@ import os
 from PIL import Image, ExifTags
 from glob import glob
 from PyQt5.QtCore import Qt, QCoreApplication
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QLabel, QDesktopWidget, QProgressBar
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QLabel, QDesktopWidget, QProgressBar, QMessageBox
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QColor, QPen, QFont
 from PyQt5.QtCore import QRect, QPoint
 
@@ -19,32 +19,36 @@ class MyApp(QMainWindow):
         statusbar = self.statusBar()
         self.setStatusBar(statusbar)
         self.fileName = QLabel('Ready')
+        self.cursorPos = QLabel('      ')
+        self.imageSize = QLabel('      ')
         self.progress = QLabel('                 ')  # reserve widget space
-        self.resizeProgressBar = QProgressBar()
+        self.resizeProgressBar = QProgressBar() 
 
         widget = QWidget(self)
         widget.setLayout(QHBoxLayout())
         widget.layout().addWidget(self.fileName)
+        widget.layout().addStretch(1)
+        widget.layout().addWidget(self.imageSize)
+        widget.layout().addWidget(self.cursorPos)
         widget.layout().addStretch(5)
         widget.layout().addWidget(self.progress)
         widget.layout().addWidget(self.resizeProgressBar)
         statusbar.addWidget(widget, 1)
 
         self.setGeometry(50, 50, 1200, 800)
+        # self.fitSize()
         self.setWindowTitle('im2trainData')
-        # self.center()
         self.show()
         
-    def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
+    def fitSize(self):
+        self.setFixedSize(self.layout().sizeHint())
 
 class ImageWidget(QWidget):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, parent):
+        super(ImageWidget, self).__init__(parent)
+        self.parent = parent
         self.results = []
+        self.setMouseTracking(True)
         self.initUI()
         
     def initUI(self):
@@ -79,20 +83,36 @@ class ImageWidget(QWidget):
                     break
             
     def mouseMoveEvent(self, event):
+        self.parent.cursorPos.setText('({}, {})'.format(event.pos().x(), event.pos().y()))
         if event.buttons() and Qt.LeftButton and self.drawing:
             self.pixmap = QPixmap.copy(self.prev_pixmap)
             painter = QPainter(self.pixmap)
             painter.setPen(QPen(Qt.red, 2, Qt.SolidLine))
-            lx, ly, rx, ry = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
-            painter.drawRect(lx, ly, rx-lx, ry-ly)
+            p1_x, p1_y, p2_x, p2_y = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
+            painter.drawRect(min(p1_x, p2_x), min(p1_y, p2_y), abs(p1_x-p2_x), abs(p1_y-p2_y))
             self.update()
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
-            lx, ly, rx, ry = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
-            if (lx, ly) != (rx, ry):
-                self.results.append([lx, ly, rx, ry])
+            p1_x, p1_y, p2_x, p2_y = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
+            lx, ly, w, h = min(p1_x, p2_x), min(p1_y, p2_y), abs(p1_x-p2_x), abs(p1_y-p2_y)
+            if (p1_x, p1_y) != (p2_x, p2_y):
+                if self.results and len(self.results[-1]) == 4:
+                    self.showPopupOk('warning messege', 'please mark the box you drew.')
+                    self.pixmap = self.drawResultBox()
+                    self.update()
+                else:
+                    self.results.append([lx, ly, lx+w, ly+h])
                 self.drawing = False
+
+    def showPopupOk(self, title: str, content: str):
+        msg = QMessageBox()
+        msg.setWindowTitle(title)
+        msg.setText(content)
+        msg.setStandardButtons(QMessageBox.Ok)
+        result = msg.exec_()
+        if result == QMessageBox.Ok:
+            msg.close()
 
     def drawResultBox(self):
         res = QPixmap.copy(self.pixmapOriginal)
@@ -112,6 +132,7 @@ class ImageWidget(QWidget):
     def setPixmap(self, image_fn):
         self.pixmap = QPixmap(image_fn)
         self.W, self.H = self.pixmap.width(), self.pixmap.height()
+        self.parent.imageSize.setText('{}x{}'.format(self.W, self.H))
         self.setFixedSize(self.W ,self.H)
         self.pixmapOriginal = QPixmap.copy(self.pixmap)
 
@@ -162,7 +183,7 @@ class MainWidget(QWidget):
         okButton = QPushButton('Next', self)
         cancelButton = QPushButton('Cancel', self)
         pathLabel = QLabel('Path not selected', self)
-        self.label_img = ImageWidget()
+        self.label_img = ImageWidget(self.parent)
 
         # Events
         okButton.clicked.connect(self.setNextImage)
@@ -202,16 +223,18 @@ class MainWidget(QWidget):
         self.parent.progress.setText(str(self.total_imgs-len(self.imgList))+'/'+str(self.total_imgs))
         self.label_img.setPixmap(self.currentImg)
         self.label_img.update()
+        self.parent.fitSize()
 
     def writeResults(self, res:list):
-        W, H = self.label_img.getRatio()
-        for elements in res:
-            lx, ly, rx, ry = elements[:4]
-            yolo_format = [(lx+rx)/2/W, (ly+ry)/2/H, (rx-lx)/W, (ry-ly)/H]
-            idx = self.key_config.index(elements[-1])
-            yolo_format.insert(0, idx)
-            with open(self.currentImg[:-4]+'.txt', 'a', encoding='utf8') as resultFile:
-                resultFile.write(' '.join([str(x) for x in yolo_format])+'\n')
+        if self.parent.fileName.text() != 'Ready':
+            W, H = self.label_img.getRatio()
+            for elements in res:
+                lx, ly, rx, ry = elements[:4]
+                yolo_format = [(lx+rx)/2/W, (ly+ry)/2/H, (rx-lx)/W, (ry-ly)/H]
+                idx = self.key_config.index(elements[-1])
+                yolo_format.insert(0, idx)
+                with open(self.currentImg[:-4]+'.txt', 'a', encoding='utf8') as resultFile:
+                    resultFile.write(' '.join([str(x) for x in yolo_format])+'\n')
 
     def registerPath(self, pathButton, label, okButton):
         pathButton.toggle()
