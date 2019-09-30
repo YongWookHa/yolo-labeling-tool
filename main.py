@@ -171,6 +171,8 @@ class MainWidget(QWidget):
         with open('config.txt', 'r', encoding='utf8') as f:
             lines = f.readlines()
             for line in lines:
+                if 'project_name' in line:
+                    self.project_name = line.split(':')[1].strip()
                 if 'max_height' in line:
                     self.max_height = int(line.split(':')[1].strip())
                 if line[:3] == 'key' and line.split(':')[1].strip() != '':
@@ -209,9 +211,8 @@ class MainWidget(QWidget):
     def setNextImage(self, img=None):
         if not img:
             res = self.label_img.getResult()
-            if res:
-                self.writeResults(res)
-                self.label_img.resetResult()
+            self.writeResults(res)
+            self.label_img.resetResult()
             try:
                 self.currentImg = self.imgList.pop(0)
             except Exception:
@@ -228,6 +229,8 @@ class MainWidget(QWidget):
     def writeResults(self, res:list):
         if self.parent.fileName.text() != 'Ready':
             W, H = self.label_img.getRatio()
+            if not res:
+                open(self.currentImg[:-4]+'.txt', 'a', encoding='utf8').close()
             for elements in res:
                 lx, ly, rx, ry = elements[:4]
                 yolo_format = [(lx+rx)/2/W, (ly+ry)/2/H, (rx-lx)/W, (ry-ly)/H]
