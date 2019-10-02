@@ -36,7 +36,6 @@ class MyApp(QMainWindow):
         statusbar.addWidget(widget, 1)
 
         self.setGeometry(50, 50, 1200, 800)
-        # self.fitSize()
         self.setWindowTitle('im2trainData')
         self.show()
         
@@ -289,6 +288,8 @@ class MainWidget(QWidget):
                 break
         if e.key() == Qt.Key_Escape:
             self.label_img.cancelLast()
+        elif e.key() == Qt.Key_Space:
+            self.setNextImage()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
