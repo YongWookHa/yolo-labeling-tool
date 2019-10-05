@@ -3,7 +3,7 @@ This codes ONLY create files below.
  - 'project_name.txt'   : contains all directories of which are '.jpg' or '.png' format  
  - 'project_name.name'  : stores all class name extracted from 'config.txt'
 
-You still have to make 'project_name.data' file and '*.cfg' file.
+You still have to make '*.cfg' file.
 Details could be found in https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data
 '''
 
@@ -22,6 +22,10 @@ if __name__ == "__main__":
                 project_name = cfg[1]
             if cfg[0][:3] == 'key' and cfg[1] is not '':
                 keys.append(cfg[1])
+        try:
+            print('project name : ', project_name)
+        except NameError:
+            project_name = 'my_project'
 
     directory = Path(askdirectory())  # search all sub-directories
 
@@ -43,8 +47,9 @@ if __name__ == "__main__":
             print(str(img.with_suffix('.txt')), 'is not in all_files')
             continue
         to_write.append(img)
-
-    if input('Split dataset into [train / test]? (y/n) : ') in ('yes', 'y'):
+    
+    data_split = input('Split dataset into [train / test]? (y/n) : ') in ('yes', 'y')
+    if data_split:
         train_ratio = float(input('Enter train data ratio (0 ~ 1) : '))
         random.shuffle(to_write)
         train_num = int(len(to_write) * train_ratio)
@@ -68,6 +73,18 @@ if __name__ == "__main__":
             for fileObject in to_write:
                 f.write(str(fileObject)+'\n')
             print('Total data saved in ', directory / (project_name+'_total.txt'))
+
+    with open(directory / (project_name+'.data'), 'w', encoding='utf8') as f:
+        f.write('classes={}\n'.format(len(keys)))
+        if data_split:
+            f.write('train={}\n'.format(directory / (project_name+'_train.txt')))
+            f.write('valid={}\n'.format(directory / (project_name+'_test.txt')))
+        else:
+            f.write('train={}\n'.format(directory / (project_name+'_total.txt')))
+            f.write('valid={}\n'.format(directory / (project_name+'_total.txt')))
+        f.write('names={}\n'.format(directory / (project_name+'.names')))
+        f.write('backup=backup/\n')
+        f.write('eval=page\n')
 
     input("\nPress any button to exit")
  
