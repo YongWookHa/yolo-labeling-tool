@@ -66,7 +66,14 @@ Each time you click `Next` button or press <kbd>space</kbd>, your work will be s
 
 For now, if you want to edit boxes of previous image, you need to delete the txt file of that image.
 
-For writing `.names`, list of `train data` and `test data`, run `create_file_list.py`. Select a directory where all data are. Answer whether you want to split the data into train and test or not. If yes, enter the train data ratio. Then those three files above will be automatically generated. And it will copy the test data images in `test_data` directory. The only thing left is making `.data` file. You can find out the details of building custom data in [ultralytics/yolov3](https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data).
+For writing nessesary files for training Yolo, run `create_file_list.py`. Select a directory where **all** data are. Answer whether you want to split the data into train and test or not. If yes, enter the train data ratio. Then those four files below will be automatically generated. 
+
+* `.data` : comprehensive information
+* `.names` : class information
+* `train data` : list of train data directory
+* `test data` : list of test(validate) data directory
+
+And it will copy the test data images in `test_data` directory. The only thing left is making `.cfg` file which represent the inner structure of your network. `yolo-labeling-tool` cannot help you make `.cfg`. Find out the details of building custom data in [ultralytics/yolov3](https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data).
 
 #### Mouse control
 
