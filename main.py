@@ -1,9 +1,10 @@
 import sys
 import os
-from PIL import Image, ExifTags
+import cv2
+import json
 from glob import glob
 from PyQt5.QtCore import Qt, QCoreApplication
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QLabel, QDesktopWidget, QProgressBar, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QLabel, QDesktopWidget, QMessageBox, QCheckBox
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QColor, QPen, QFont
 from PyQt5.QtCore import QRect, QPoint
 
@@ -22,7 +23,6 @@ class MyApp(QMainWindow):
         self.cursorPos = QLabel('      ')
         self.imageSize = QLabel('      ')
         self.progress = QLabel('                 ')  # reserve widget space
-        self.resizeProgressBar = QProgressBar() 
 
         widget = QWidget(self)
         widget.setLayout(QHBoxLayout())
@@ -32,7 +32,6 @@ class MyApp(QMainWindow):
         widget.layout().addWidget(self.cursorPos)
         widget.layout().addStretch(5)
         widget.layout().addWidget(self.progress)
-        widget.layout().addWidget(self.resizeProgressBar)
         statusbar.addWidget(widget, 1)
 
         self.setGeometry(50, 50, 1200, 800)
@@ -43,11 +42,14 @@ class MyApp(QMainWindow):
         self.setFixedSize(self.layout().sizeHint())
 
 class ImageWidget(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, key_cfg):
         super(ImageWidget, self).__init__(parent)
         self.parent = parent
         self.results = []
         self.setMouseTracking(True)
+        self.key_config = key_cfg
+        self.screen_height = QDesktopWidget().screenGeometry().height()
+
         self.initUI()
         
     def initUI(self):
@@ -124,15 +126,23 @@ class ImageWidget(QWidget):
             painter.drawRect(lx, ly, rx-lx, ry-ly)
             if len(box) == 5:
                 painter.setPen(QPen(Qt.blue, 2, Qt.SolidLine))
-                painter.drawText(lx, ly+15, box[-1])
+                painter.drawText(lx, ly+15, self.key_config[box[-1]])
                 painter.setPen(QPen(Qt.red, 2, Qt.SolidLine))
         return res
 
     def setPixmap(self, image_fn):
         self.pixmap = QPixmap(image_fn)
         self.W, self.H = self.pixmap.width(), self.pixmap.height()
+
+        if self.H > self.screen_height * 0.8:
+            resize_ratio = (self.screen_height * 0.8) / self.H
+            self.W = round(self.W * resize_ratio)
+            self.H = round(self.H * resize_ratio)
+            self.pixmap = QPixmap.scaled(self.pixmap, self.W, self.H,
+                                transformMode=Qt.SmoothTransformation)
+        
         self.parent.imageSize.setText('{}x{}'.format(self.W, self.H))
-        self.setFixedSize(self.W ,self.H)
+        self.setFixedSize(self.W, self.H)
         self.pixmapOriginal = QPixmap.copy(self.pixmap)
 
     def cancelLast(self):
@@ -166,38 +176,49 @@ class MainWidget(QWidget):
         super(MainWidget, self).__init__(parent)
         self.parent = parent
         self.currentImg = "start.png"
-        self.key_config = []
-        with open('config.txt', 'r', encoding='utf8') as f:
-            lines = f.readlines()
-            for line in lines:
-                if 'project_name' in line:
-                    self.project_name = line.split(':')[1].strip()
-                if 'max_height' in line:
-                    self.max_height = int(line.split(':')[1].strip())
-                if line[:3] == 'key' and line.split(':')[1].strip() != '':
-                    self.key_config.append(line.split(':')[1].strip())
+        config_dict = self.getConfigFromJson('config.json')
+        self.key_config = [config_dict['key_'+str(i)] for i in range(1, 10) if config_dict['key_'+str(i)]]
+        self.crop_mode = False
+        self.save_directory = None
+
         self.initUI()
 
     def initUI(self):
         # UI elements
-        pathButton = QPushButton('Path', self)
+        InputPathButton = QPushButton('Input Path', self)
+        SavePathButton = QPushButton('Save Path', self)
         okButton = QPushButton('Next', self)
         cancelButton = QPushButton('Cancel', self)
-        pathLabel = QLabel('Path not selected', self)
-        self.label_img = ImageWidget(self.parent)
+        cropModeCheckBox = QCheckBox("Crop Mode", self)
+        InputPathLabel = QLabel('Input Path not selected', self)
+        SavePathLabel = QLabel('Save Path not selected', self)
+        self.label_img = ImageWidget(self.parent, self.key_config)
 
         # Events
         okButton.clicked.connect(self.setNextImage)
         okButton.setEnabled(False)
         cancelButton.clicked.connect(self.label_img.cancelLast)
-        pathButton.setCheckable(True)
-        pathButton.clicked.connect(lambda:self.registerPath(pathButton, pathLabel, okButton))
+        cropModeCheckBox.stateChanged.connect(self.cropMode)
+        InputPathButton.clicked.connect(lambda:self.registerInputPath(InputPathButton, InputPathLabel, okButton))
+        SavePathButton.clicked.connect(lambda:self.registerSavePath(SavePathButton, SavePathLabel))
         
         hbox = QHBoxLayout()
+
+        vbox = QVBoxLayout()
+        vbox.addWidget(InputPathButton)
+        vbox.addWidget(SavePathButton)
+    
+        hbox.addLayout(vbox)
+
         
-        hbox.addWidget(pathButton)
-        hbox.addWidget(pathLabel)
-        hbox.addStretch(5)
+        vbox = QVBoxLayout()
+        vbox.addWidget(InputPathLabel)
+        vbox.addWidget(SavePathLabel)
+
+        hbox.addLayout(vbox)
+        hbox.addStretch(3)
+        hbox.addWidget(cropModeCheckBox)
+        hbox.addStretch(1)
         hbox.addWidget(okButton)
         hbox.addWidget(cancelButton)
 
@@ -210,6 +231,9 @@ class MainWidget(QWidget):
     def setNextImage(self, img=None):
         if not img:
             res = self.label_img.getResult()
+            if res and len(res[-1]) != 5:
+                self.label_img.showPopupOk('warning messege', 'please mark the box you drew.')
+                return 'Not Marked'
             self.writeResults(res)
             self.label_img.resetResult()
             try:
@@ -218,9 +242,11 @@ class MainWidget(QWidget):
                 self.currentImg = 'end.png'
         else:
             self.label_img.resetResult()
+
         basename = os.path.basename(self.currentImg)
         self.parent.fileName.setText(basename)
         self.parent.progress.setText(str(self.total_imgs-len(self.imgList))+'/'+str(self.total_imgs))
+
         self.label_img.setPixmap(self.currentImg)
         self.label_img.update()
         self.parent.fitSize()
@@ -230,17 +256,32 @@ class MainWidget(QWidget):
             W, H = self.label_img.getRatio()
             if not res:
                 open(self.currentImg[:-4]+'.txt', 'a', encoding='utf8').close()
-            for elements in res:
-                lx, ly, rx, ry = elements[:4]
+            for i, elements in enumerate(res):  # box : (lx, ly, rx, ry, idx)
+                lx, ly, rx, ry, idx = elements
+                # yolo : (idx center_x_ratio, center_y_ratio, width_ratio, height_ratio)
                 yolo_format = [(lx+rx)/2/W, (ly+ry)/2/H, (rx-lx)/W, (ry-ly)/H]
-                idx = self.key_config.index(elements[-1])
-                yolo_format.insert(0, idx)
+                yolo_format.insert(0, idx)  
                 with open(self.currentImg[:-4]+'.txt', 'a', encoding='utf8') as resultFile:
                     resultFile.write(' '.join([str(x) for x in yolo_format])+'\n')
+                if self.crop_mode:
+                    img = cv2.imread(self.currentImg)
+                    oh, ow = img.shape[:2]
+                    w, h = round(yolo_format[3]*ow), round(yolo_format[4]*oh)
+                    x, y = round(yolo_format[1]*ow - w/2), round(yolo_format[2]*oh - h/2)
+                    crop_img = img[y:y+h, x:x+w]
+                    basename = os.path.basename(self.currentImg)
+                    filename = basename[:-4]+'-{}-{}.jpg'.format(self.key_config[0], i)
+                    cv2.imwrite(os.path.join(self.save_directory, filename), crop_img)
 
-    def registerPath(self, pathButton, label, okButton):
-        pathButton.toggle()
-        directory = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+    def registerSavePath(self, SavePathButton, label):
+        SavePathButton.toggle()
+        self.save_directory = str(QFileDialog.getExistingDirectory(self, "Select Save Directory"))
+        basename = os.path.basename(self.save_directory)
+        label.setText(basename+'/')
+
+    def registerInputPath(self, InputPathButton, label, okButton):
+        InputPathButton.toggle()
+        directory = str(QFileDialog.getExistingDirectory(self, "Select Input Directory"))
         
         types = ('*.jpg', '*.png')
         self.imgList = []
@@ -255,41 +296,44 @@ class MainWidget(QWidget):
         for skip in to_skip:
             self.imgList.remove(skip)
 
-        for idx, img in enumerate(self.imgList):
-            self.parent.progress.setText('Resizing.'+'.'*(idx%3))
-            im = Image.open(img)
-            w, h = im.size
-            self.parent.resizeProgressBar.setValue(int(idx/len(self.imgList)*100)+1)
-            if h > self.max_height:
-                ratio = self.max_height/h
-                im = im.resize((int(w*ratio), self.max_height) ,resample=Image.BICUBIC)
-                try:
-                    for orientation in ExifTags.TAGS.keys(): 
-                        if ExifTags.TAGS[orientation]=='Orientation':
-                            break 
-                    exif=dict(im.getexif().items())
-                    if exif[orientation] in [3,6,8]: 
-                        im = im.transpose(Image.ROTATE_180)
-                except:
-                    pass
-                im.save(img)
-        self.parent.resizeProgressBar.close()
-        self.parent.progress.setText('Resize Completed')
-
         basename = os.path.basename(directory)
         label.setText(basename+'/')
         okButton.setEnabled(True)
+
+        if self.save_directory is None:
+            self.save_directory = directory
+
+    def getConfigFromJson(self, json_file):
+        # parse the configurations from the config json file provided
+        with open(json_file, 'r') as config_file:
+            try:
+                config_dict = json.load(config_file)
+                # EasyDict allows to access dict values as attributes (works recursively).
+                return config_dict
+            except ValueError:
+                print("INVALID JSON file format.. Please provide a good json file")
+                exit(-1)
+
+    def cropMode(self, state):
+        if state == Qt.Checked:
+            self.crop_mode = True
+        else:
+            self.crop_mode = False
     
     def keyPressEvent(self, e):
         config_len = len(self.key_config)
         for i, key_n in enumerate(range(49,58), 1):
             if e.key() == key_n and config_len >= i:
-                self.label_img.markBox(self.key_config[i-1]) 
+                self.label_img.markBox(i-1) 
                 break
         if e.key() == Qt.Key_Escape:
             self.label_img.cancelLast()
-        elif e.key() == Qt.Key_Space:
+        elif e.key() == Qt.Key_E:
             self.setNextImage()
+        elif e.key() == Qt.Key_Q:
+            self.label_img.resetResult()
+            self.label_img.pixmap = self.label_img.drawResultBox()
+            self.label_img.update()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
