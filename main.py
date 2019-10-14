@@ -22,6 +22,7 @@ class MyApp(QMainWindow):
         self.fileName = QLabel('Ready')
         self.cursorPos = QLabel('      ')
         self.imageSize = QLabel('      ')
+        self.autoLabel = QLabel('Manual Label')
         self.progress = QLabel('                 ')  # reserve widget space
 
         widget = QWidget(self)
@@ -30,7 +31,9 @@ class MyApp(QMainWindow):
         widget.layout().addStretch(1)
         widget.layout().addWidget(self.imageSize)
         widget.layout().addWidget(self.cursorPos)
-        widget.layout().addStretch(5)
+        widget.layout().addStretch(1)
+        widget.layout().addWidget(self.autoLabel)
+        widget.layout().addStretch(2)
         widget.layout().addWidget(self.progress)
         statusbar.addWidget(widget, 1)
 
@@ -49,6 +52,7 @@ class ImageWidget(QWidget):
         self.setMouseTracking(True)
         self.key_config = key_cfg
         self.screen_height = QDesktopWidget().screenGeometry().height()
+        self.last_idx = 0
 
         self.initUI()
         
@@ -98,8 +102,15 @@ class ImageWidget(QWidget):
             p1_x, p1_y, p2_x, p2_y = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
             lx, ly, w, h = min(p1_x, p2_x), min(p1_y, p2_y), abs(p1_x-p2_x), abs(p1_y-p2_y)
             if (p1_x, p1_y) != (p2_x, p2_y):
-                if self.results and len(self.results[-1]) == 4:
+                if self.results and len(self.results[-1]) == 4 and self.parent.autoLabel.text() == 'Manual Label':
                     self.showPopupOk('warning messege', 'please mark the box you drew.')
+                    self.pixmap = self.drawResultBox()
+                    self.update()
+                elif self.parent.autoLabel.text() == 'Auto Label':
+                    self.results.append([lx, ly, lx+w, ly+h, self.last_idx])
+                    for i, result in enumerate(self.results):  # fill empty labels
+                        if len(result) == 4:
+                            self.results[i].append(self.last_idx)
                     self.pixmap = self.drawResultBox()
                     self.update()
                 else:
@@ -160,12 +171,13 @@ class ImageWidget(QWidget):
     def resetResult(self):
         self.results = []
 
-    def markBox(self, marker):
+    def markBox(self, idx):
+        self.last_idx = idx
         if self.results:
             if len(self.results[-1]) == 4:
-                self.results[-1].append(marker)
+                self.results[-1].append(idx)
             elif len(self.results[-1]) == 5:
-                self.results[-1][-1] = marker
+                self.results[-1][-1] = idx
             else:
                 raise ValueError('invalid results')
             self.pixmap = self.drawResultBox()
@@ -187,6 +199,7 @@ class MainWidget(QWidget):
         # UI elements
         InputPathButton = QPushButton('Input Path', self)
         SavePathButton = QPushButton('Save Path', self)
+        SavePathButton.setEnabled(False)
         okButton = QPushButton('Next', self)
         cancelButton = QPushButton('Cancel', self)
         cropModeCheckBox = QCheckBox("Crop Mode", self)
@@ -198,7 +211,7 @@ class MainWidget(QWidget):
         okButton.clicked.connect(self.setNextImage)
         okButton.setEnabled(False)
         cancelButton.clicked.connect(self.label_img.cancelLast)
-        cropModeCheckBox.stateChanged.connect(self.cropMode)
+        cropModeCheckBox.stateChanged.connect(lambda state: self.cropMode(state, SavePathButton))
         InputPathButton.clicked.connect(lambda:self.registerInputPath(InputPathButton, InputPathLabel, okButton))
         SavePathButton.clicked.connect(lambda:self.registerSavePath(SavePathButton, SavePathLabel))
         
@@ -277,7 +290,11 @@ class MainWidget(QWidget):
         SavePathButton.toggle()
         self.save_directory = str(QFileDialog.getExistingDirectory(self, "Select Save Directory"))
         basename = os.path.basename(self.save_directory)
-        label.setText(basename+'/')
+        if basename:
+            label.setText(basename+'/')
+        else:
+            print("Output Path not selected")
+            self.output_directory = None
 
     def registerInputPath(self, InputPathButton, label, okButton):
         InputPathButton.toggle()
@@ -314,11 +331,13 @@ class MainWidget(QWidget):
                 print("INVALID JSON file format.. Please provide a good json file")
                 exit(-1)
 
-    def cropMode(self, state):
+    def cropMode(self, state, SavePathButton):
         if state == Qt.Checked:
             self.crop_mode = True
+            SavePathButton.setEnabled(True)
         else:
             self.crop_mode = False
+            SavePathButton.setEnabled(False)
     
     def keyPressEvent(self, e):
         config_len = len(self.key_config)
@@ -334,6 +353,11 @@ class MainWidget(QWidget):
             self.label_img.resetResult()
             self.label_img.pixmap = self.label_img.drawResultBox()
             self.label_img.update()
+        elif e.key() == Qt.Key_A:
+            if self.parent.autoLabel.text() == 'Auto Label':
+                self.parent.autoLabel.setText('Manual Label')
+            else:
+                self.parent.autoLabel.setText('Auto Label')
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
