@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 Before start the program, edit `config.json` file as your needs. 
 
-Now, you can run the program by simply executing the code with python.
+Now, you can run the program by executing the code with python.
 
 ```bash
 python main.py
@@ -51,21 +51,19 @@ python main.py
 
 ## 3. Usage
 
-You need to 
-
 Now, you are ready to start generating you own train data.
 
-![capture (2)](https://user-images.githubusercontent.com/12293076/66543692-09d07900-eb71-11e9-8122-9168319e4f67.PNG)
+![capture191014](https://user-images.githubusercontent.com/12293076/66724929-d76f9600-ee66-11e9-95af-8b7e8a0fa194.PNG)
 
 You will see the window above. Press `Input Path` button and select a directory where your training images are. If you check `Crop Mode`, your bounding boxes will be saved separately by cropping. You can specify where crop results to be saved by pressing `Save Path` button. And then, press `Next` button to start the main process.
 
 Now, you can draw bounding boxes by draging on the image. After drawing a box, you should tag the box by pressing <kbd>1-9</kbd>. The `num:label name` setting should be specified in `config.json` in advance. You can change the last box's tag by pressing tagging button again. If you find earlier mistakes, then remove the wrongly drawn box by clicking it with <kbd>Right</kbd> mouse button.
 
-Each time you click `Next` button or press <kbd>E</kbd>, your work will be saved image by image in a `.txt` file which has same filename of the image.
+Each time you click `Next` button or press <kbd>E</kbd>, your work will be saved image by image in a `.txt` file which has same filename of the image. Cropped images will be saved in specified directory at this time.
 
 For now, if you want to edit boxes of previous image, you need to delete the txt file of that image.
 
-For writing nessesary files for training Yolo, run `create_file_list.py`. Select a directory where **all** data are. Answer whether you want to split the data into train and test or not. If yes, enter the train data ratio. Then those four files below will be automatically generated. 
+To write nessesary files for training Yolo, run `create_file_list.py`. Select a directory where **all** data are. Answer whether you want to split the data into train and test or not. If yes, enter the train data ratio. Then those four files below will be automatically generated. 
 
 * `.data` : comprehensive information
 * `.names` : class information
@@ -89,7 +87,7 @@ Shortcut | Description |
 <kbd>ESC</kbd> | Cancel The Last Box |
 <kbd>Q</kbd> | Cancel All Boxes |
 <kbd>E</kbd> | Next button |
-
+<kbd>A</kbd> | Auto Labeling Mode |
 
 ## 4. ETC
 
