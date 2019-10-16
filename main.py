@@ -2,6 +2,7 @@ import sys
 import os
 import cv2
 import json
+from PIL import Image, ExifTags
 from glob import glob
 from PyQt5.QtCore import Qt, QCoreApplication
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QLabel, QDesktopWidget, QMessageBox, QCheckBox
@@ -260,6 +261,18 @@ class MainWidget(QWidget):
                 self.currentImg = 'end.png'
         else:
             self.label_img.resetResult()
+
+        try:
+            im = Image.open(self.currentImg)
+            for orientation in ExifTags.TAGS.keys(): 
+                if ExifTags.TAGS[orientation]=='Orientation':
+                    break 
+            exif=dict(im.getexif().items())
+            if exif[orientation] in [3,6,8]: 
+                im = im.transpose(Image.ROTATE_180)
+                im.save(self.currentImg)
+        except:
+            pass
 
         basename = os.path.basename(self.currentImg)
         self.parent.fileName.setText(basename)
