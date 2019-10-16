@@ -6,22 +6,37 @@ This codes ONLY create files below.
 You still have to make '*.cfg' file.
 Details could be found in https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data
 '''
-
+import json
 import random
 import shutil
 from pathlib import Path
 from tkinter.filedialog import askdirectory
 
+def getConfigFromJson(self, json_file):
+    # parse the configurations from the config json file provided
+    with open(json_file, 'r') as config_file:
+        try:
+            config_dict = json.load(config_file)
+            # EasyDict allows to access dict values as attributes (works recursively).
+            return config_dict
+        except ValueError:
+            print("INVALID JSON file format.. Please provide a good json file")
+            exit(-1)
+
 if __name__ == "__main__":
-    with open("config.txt", 'r', encoding='utf8') as f:
-        lines = f.readlines()
+    with open("config.json", 'r') as f:
+        try:
+            config_dict = json.load(f)
+            # EasyDict allows to access dict values as attributes (works recursively).
+        except ValueError:
+            print("INVALID JSON file format.. Please provide a good json file")
+            exit(-1)
         keys = []
-        for line in lines:
-            cfg = list(map(str.strip, line.split(':')))
-            if 'project_name' in cfg[0]:
-                project_name = cfg[1]
-            if cfg[0][:3] == 'key' and cfg[1] is not '':
-                keys.append(cfg[1])
+        for k, v in config_dict.items():
+            if k == 'project_name':
+                project_name = v
+            elif 'key' in k and v is not '':
+                keys.append(v)
         try:
             print('project name : ', project_name)
         except NameError:
@@ -84,7 +99,7 @@ if __name__ == "__main__":
             f.write('valid={}\n'.format(directory / (project_name+'_total.txt')))
         f.write('names={}\n'.format(directory / (project_name+'.names')))
         f.write('backup=backup/\n')
-        f.write('eval=page\n')
+        f.write('eval=eval\n')
 
     input("\nPress any button to exit")
  
