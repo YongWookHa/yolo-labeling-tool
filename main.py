@@ -197,36 +197,38 @@ class MainWidget(QWidget):
 
     def initUI(self):
         # UI elements
-        InputPathButton = QPushButton('Input Path', self)
-        SavePathButton = QPushButton('Save Path', self)
-        SavePathButton.setEnabled(False)
+        inputPathButton = QPushButton('Input Path', self)
+        savePathButton = QPushButton('Save Path', self)
+        savePathButton.setEnabled(False)
         okButton = QPushButton('Next', self)
         cancelButton = QPushButton('Cancel', self)
         cropModeCheckBox = QCheckBox("Crop Mode", self)
-        InputPathLabel = QLabel('Input Path not selected', self)
-        SavePathLabel = QLabel('Save Path not selected', self)
+        inputPathLabel = QLabel('Input Path not selected', self)
+        self.savePathLabel = QLabel('Save Path not selected', self)
+        self.savePathLabel.setEnabled(False)
+
         self.label_img = ImageWidget(self.parent, self.key_config)
 
         # Events
         okButton.clicked.connect(self.setNextImage)
         okButton.setEnabled(False)
         cancelButton.clicked.connect(self.label_img.cancelLast)
-        cropModeCheckBox.stateChanged.connect(lambda state: self.cropMode(state, SavePathButton))
-        InputPathButton.clicked.connect(lambda:self.registerInputPath(InputPathButton, InputPathLabel, okButton))
-        SavePathButton.clicked.connect(lambda:self.registerSavePath(SavePathButton, SavePathLabel))
+        cropModeCheckBox.stateChanged.connect(lambda state: self.cropMode(state, savePathButton))
+        inputPathButton.clicked.connect(lambda:self.registerInputPath(inputPathButton, inputPathLabel, okButton))
+        savePathButton.clicked.connect(lambda:self.registerSavePath(savePathButton, self.savePathLabel))
         
         hbox = QHBoxLayout()
 
         vbox = QVBoxLayout()
-        vbox.addWidget(InputPathButton)
-        vbox.addWidget(SavePathButton)
+        vbox.addWidget(inputPathButton)
+        vbox.addWidget(savePathButton)
     
         hbox.addLayout(vbox)
 
         
         vbox = QVBoxLayout()
-        vbox.addWidget(InputPathLabel)
-        vbox.addWidget(SavePathLabel)
+        vbox.addWidget(inputPathLabel)
+        vbox.addWidget(self.savePathLabel)
 
         hbox.addLayout(vbox)
         hbox.addStretch(3)
@@ -242,6 +244,9 @@ class MainWidget(QWidget):
         self.setLayout(vbox)
 
     def setNextImage(self, img=None):
+        if self.savePathLabel.text() == 'Results' and self.crop_mode:
+            os.makedirs(self.save_directory, exist_ok=True)
+
         if not img:
             res = self.label_img.getResult()
             if res and len(res[-1]) != 5:
@@ -286,19 +291,23 @@ class MainWidget(QWidget):
                     filename = basename[:-4]+'-{}-{}.jpg'.format(self.key_config[0], i)
                     cv2.imwrite(os.path.join(self.save_directory, filename), crop_img)
 
-    def registerSavePath(self, SavePathButton, label):
-        SavePathButton.toggle()
+    def registerSavePath(self, savePathButton, label):
+        savePathButton.toggle()
         self.save_directory = str(QFileDialog.getExistingDirectory(self, "Select Save Directory"))
         basename = os.path.basename(self.save_directory)
         if basename:
             label.setText(basename+'/')
         else:
             print("Output Path not selected")
-            self.output_directory = None
+            self.save_directory = None
 
-    def registerInputPath(self, InputPathButton, label, okButton):
-        InputPathButton.toggle()
+    def registerInputPath(self, inputPathButton, inputPathLabel, okButton):
+        inputPathButton.toggle()
         directory = str(QFileDialog.getExistingDirectory(self, "Select Input Directory"))
+        basename = os.path.basename(directory)
+        if not basename:
+            print("Input Path not selected")
+            return -1 
         
         types = ('*.jpg', '*.png')
         self.imgList = []
@@ -313,12 +322,12 @@ class MainWidget(QWidget):
         for skip in to_skip:
             self.imgList.remove(skip)
 
-        basename = os.path.basename(directory)
-        label.setText(basename+'/')
+        inputPathLabel.setText(basename+'/')
         okButton.setEnabled(True)
 
-        if self.save_directory is None:
-            self.save_directory = directory
+        if self.save_directory is None or self.savePathLabel.text() == 'Results':
+            self.savePathLabel.setText('Results')
+            self.save_directory = os.path.join(directory, 'Results')
 
     def getConfigFromJson(self, json_file):
         # parse the configurations from the config json file provided
@@ -331,13 +340,13 @@ class MainWidget(QWidget):
                 print("INVALID JSON file format.. Please provide a good json file")
                 exit(-1)
 
-    def cropMode(self, state, SavePathButton):
+    def cropMode(self, state, savePathButton):
         if state == Qt.Checked:
             self.crop_mode = True
-            SavePathButton.setEnabled(True)
+            savePathButton.setEnabled(True)
         else:
             self.crop_mode = False
-            SavePathButton.setEnabled(False)
+            savePathButton.setEnabled(False)
     
     def keyPressEvent(self, e):
         config_len = len(self.key_config)
