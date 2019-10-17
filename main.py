@@ -290,8 +290,7 @@ class MainWidget(QWidget):
             for i, elements in enumerate(res):  # box : (lx, ly, rx, ry, idx)
                 lx, ly, rx, ry, idx = elements
                 # yolo : (idx center_x_ratio, center_y_ratio, width_ratio, height_ratio)
-                yolo_format = [(lx+rx)/2/W, (ly+ry)/2/H, (rx-lx)/W, (ry-ly)/H]
-                yolo_format.insert(0, idx)  
+                yolo_format = [idx, (lx+rx)/2/W, (ly+ry)/2/H, (rx-lx)/W, (ry-ly)/H]
                 with open(self.currentImg[:-4]+'.txt', 'a', encoding='utf8') as resultFile:
                     resultFile.write(' '.join([str(x) for x in yolo_format])+'\n')
                 if self.crop_mode:
@@ -301,7 +300,7 @@ class MainWidget(QWidget):
                     x, y = round(yolo_format[1]*ow - w/2), round(yolo_format[2]*oh - h/2)
                     crop_img = img[y:y+h, x:x+w]
                     basename = os.path.basename(self.currentImg)
-                    filename = basename[:-4]+'-{}-{}.jpg'.format(self.key_config[0], i)
+                    filename = basename[:-4]+'-{}-{}.jpg'.format(self.key_config[idx], i)
                     cv2.imwrite(os.path.join(self.save_directory, filename), crop_img)
 
     def registerSavePath(self, savePathButton, label):
