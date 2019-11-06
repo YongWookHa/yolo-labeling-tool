@@ -2,10 +2,13 @@ import sys
 import os
 import cv2
 import json
+import numpy as np
 from PIL import Image, ExifTags
 from glob import glob
 from PyQt5.QtCore import Qt, QCoreApplication
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton, QHBoxLayout, QVBoxLayout, QFileDialog, QLabel, QDesktopWidget, QMessageBox, QCheckBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QPushButton
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout, QFileDialog, QLabel
+from PyQt5.QtWidgets import QDesktopWidget, QMessageBox, QCheckBox
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QColor, QPen, QFont
 from PyQt5.QtCore import QRect, QPoint
 
@@ -89,28 +92,36 @@ class ImageWidget(QWidget):
                     break
             
     def mouseMoveEvent(self, event):
-        self.parent.cursorPos.setText('({}, {})'.format(event.pos().x(), event.pos().y()))
+        self.parent.cursorPos.setText('({}, {})'
+                                    .format(event.pos().x(), event.pos().y()))
         if event.buttons() and Qt.LeftButton and self.drawing:
             self.pixmap = QPixmap.copy(self.prev_pixmap)
             painter = QPainter(self.pixmap)
             painter.setPen(QPen(Qt.red, 2, Qt.SolidLine))
-            p1_x, p1_y, p2_x, p2_y = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
-            painter.drawRect(min(p1_x, p2_x), min(p1_y, p2_y), abs(p1_x-p2_x), abs(p1_y-p2_y))
+            p1_x, p1_y = self.lastPoint.x(), self.lastPoint.y()
+            p2_x, p2_y = event.pos().x(), event.pos().y()
+            painter.drawRect(min(p1_x, p2_x), min(p1_y, p2_y), 
+                              abs(p1_x-p2_x), abs(p1_y-p2_y))
             self.update()
 
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
-            p1_x, p1_y, p2_x, p2_y = self.lastPoint.x(), self.lastPoint.y(), event.pos().x(), event.pos().y()
-            lx, ly, w, h = min(p1_x, p2_x), min(p1_y, p2_y), abs(p1_x-p2_x), abs(p1_y-p2_y)
+            p1_x, p1_y = self.lastPoint.x(), self.lastPoint.y() 
+            p2_x, p2_y = event.pos().x(), event.pos().y()
+            lx, ly = min(p1_x, p2_x), min(p1_y, p2_y)
+            w, h = abs(p1_x-p2_x), abs(p1_y-p2_y)
             if (p1_x, p1_y) != (p2_x, p2_y):
-                if self.results and len(self.results[-1]) == 4 and self.parent.autoLabel.text() == 'Manual Label':
-                    self.showPopupOk('warning messege', 'please mark the box you drew.')
+                not_marked = (len(self.results[-1]) == 4)
+                is_manual = self.parent.autoLabel.text() == 'Manual Label'
+                if self.results and not_marked and is_manual:
+                    self.showPopupOk('warning messege', 
+                                      'Please mark the box you drew.')
                     self.pixmap = self.drawResultBox()
                     self.update()
                 elif self.parent.autoLabel.text() == 'Auto Label':
                     self.results.append([lx, ly, lx+w, ly+h, self.last_idx])
-                    for i, result in enumerate(self.results):  # fill empty labels
-                        if len(result) == 4:
+                    for i, result in enumerate(self.results):  
+                        if len(result) == 4:  # fill empty labels
                             self.results[i].append(self.last_idx)
                     self.pixmap = self.drawResultBox()
                     self.update()
@@ -190,7 +201,8 @@ class MainWidget(QWidget):
         self.parent = parent
         self.currentImg = "start.png"
         config_dict = self.getConfigFromJson('config.json')
-        self.key_config = [config_dict['key_'+str(i)] for i in range(1, 10) if config_dict['key_'+str(i)]]
+        self.key_config = [config_dict['key_'+str(i)] for i in range(1, 10) 
+                                                if config_dict['key_'+str(i)]]
         self.crop_mode = False
         self.save_directory = None
 
@@ -214,9 +226,12 @@ class MainWidget(QWidget):
         okButton.clicked.connect(self.setNextImage)
         okButton.setEnabled(False)
         cancelButton.clicked.connect(self.label_img.cancelLast)
-        cropModeCheckBox.stateChanged.connect(lambda state: self.cropMode(state, savePathButton))
-        inputPathButton.clicked.connect(lambda:self.registerInputPath(inputPathButton, inputPathLabel, okButton))
-        savePathButton.clicked.connect(lambda:self.registerSavePath(savePathButton, self.savePathLabel))
+        cropModeCheckBox.stateChanged.connect(lambda state: 
+                                        self.cropMode(state, savePathButton))
+        inputPathButton.clicked.connect(lambda:self.registerInputPath(
+                                    inputPathButton, inputPathLabel, okButton))
+        savePathButton.clicked.connect(lambda:self.registerSavePath(
+                                          savePathButton, self.savePathLabel))
         
         hbox = QHBoxLayout()
 
@@ -251,7 +266,8 @@ class MainWidget(QWidget):
         if not img:
             res = self.label_img.getResult()
             if res and len(res[-1]) != 5:
-                self.label_img.showPopupOk('warning messege', 'please mark the box you drew.')
+                self.label_img.showPopupOk('warning messege', 
+                                            'please mark the box you drew.')
                 return 'Not Marked'
             self.writeResults(res)
             self.label_img.resetResult()
@@ -276,7 +292,8 @@ class MainWidget(QWidget):
 
         basename = os.path.basename(self.currentImg)
         self.parent.fileName.setText(basename)
-        self.parent.progress.setText(str(self.total_imgs-len(self.imgList))+'/'+str(self.total_imgs))
+        self.parent.progress.setText(str(self.total_imgs-len(self.imgList))+
+                                                    '/'+str(self.total_imgs))
 
         self.label_img.setPixmap(self.currentImg)
         self.label_img.update()
@@ -295,13 +312,21 @@ class MainWidget(QWidget):
                     resultFile.write(' '.join([str(x) for x in yolo_format])+'\n')
                 if self.crop_mode:
                     img = cv2.imread(self.currentImg)
+                    if img is None:
+                        n = np.fromfile(self.currentImg, np.uint8) 
+                        img = cv2.imdecode(n, cv2.IMREAD_COLOR)
                     oh, ow = img.shape[:2]
                     w, h = round(yolo_format[3]*ow), round(yolo_format[4]*oh)
                     x, y = round(yolo_format[1]*ow - w/2), round(yolo_format[2]*oh - h/2)
                     crop_img = img[y:y+h, x:x+w]
                     basename = os.path.basename(self.currentImg)
                     filename = basename[:-4]+'-{}-{}.jpg'.format(self.key_config[idx], i)
-                    cv2.imwrite(os.path.join(self.save_directory, filename), crop_img)
+
+                    # Korean dir support
+                    crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
+                    crop_img = Image.fromarray(crop_img)
+                    crop_img.save(os.path.join(self.output_directory, filename), dpi=(300,300))
+                    print(os.path.join(self.save_directory, filename))
 
     def registerSavePath(self, savePathButton, label):
         savePathButton.toggle()
