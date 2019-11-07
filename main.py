@@ -111,9 +111,7 @@ class ImageWidget(QWidget):
             lx, ly = min(p1_x, p2_x), min(p1_y, p2_y)
             w, h = abs(p1_x-p2_x), abs(p1_y-p2_y)
             if (p1_x, p1_y) != (p2_x, p2_y):
-                not_marked = (len(self.results[-1]) == 4)
-                is_manual = self.parent.autoLabel.text() == 'Manual Label'
-                if self.results and not_marked and is_manual:
+                if self.results and (len(self.results[-1]) == 4) and self.parent.autoLabel.text() == 'Manual Label':
                     self.showPopupOk('warning messege', 
                                       'Please mark the box you drew.')
                     self.pixmap = self.drawResultBox()
@@ -325,8 +323,7 @@ class MainWidget(QWidget):
                     # Korean dir support
                     crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
                     crop_img = Image.fromarray(crop_img)
-                    crop_img.save(os.path.join(self.output_directory, filename), dpi=(300,300))
-                    print(os.path.join(self.save_directory, filename))
+                    crop_img.save(os.path.join(self.save_directory, filename), dpi=(300,300))
 
     def registerSavePath(self, savePathButton, label):
         savePathButton.toggle()
